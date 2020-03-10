@@ -30,7 +30,7 @@ public class WalletTransactionTest {
     private WalletTransaction walletTransaction;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         initMocks(this);
     }
 
@@ -47,9 +47,11 @@ public class WalletTransactionTest {
     @Test
     public void should_return_true_when_state_is_executed() throws InvalidTransactionException {
         walletService = Mockito.mock(WalletServiceImpl.class);
-        walletTransaction = new WalletTransaction(null, 1L, 2L, 100L, "orderId", 1.0);
-        walletTransaction.status = STATUS.EXECUTED;
+        walletTransaction = Mockito.spy(new WalletTransaction(null, 1L, 2L, 100L, "orderId", 1.0));
+        Mockito.doReturn(true).when(walletTransaction).checkIfExecuted();
+
         assertThat(walletTransaction.execute(walletService)).isEqualTo(true);
+        Mockito.verify(walletService, Mockito.times(0)).moveMoney(anyString(), anyLong(), anyLong(), anyDouble());
     }
 
     @Test
@@ -64,6 +66,24 @@ public class WalletTransactionTest {
         PowerMockito.when(RedisDistributedLock.getSingletonInstance()).thenReturn(lock);
 
         assertThat(walletTransaction.execute(walletService)).isEqualTo(false);
+        Mockito.verify(walletService, Mockito.times(0)).moveMoney(anyString(), anyLong(), anyLong(), anyDouble());
+    }
+
+    @Test
+    public void should_return_true_when_double_check_state_is_executed() throws InvalidTransactionException {
+        walletService = Mockito.mock(WalletServiceImpl.class);
+        walletTransaction = Mockito.spy(new WalletTransaction("id", 1L, 2L, 100L, "orderId", 1.0));
+
+        mockStatic(RedisDistributedLock.class);
+        RedisDistributedLock lock = Mockito.spy(new RedisDistributedLock());
+
+        Mockito.doReturn(true).when(lock).lock(anyString());
+        Mockito.doNothing().when(lock).unlock(anyString());
+        Mockito.doReturn(false, true).when(walletTransaction).checkIfExecuted();
+        PowerMockito.when(RedisDistributedLock.getSingletonInstance()).thenReturn(lock);
+
+        assertThat(walletTransaction.execute(walletService)).isEqualTo(true);
+        Mockito.verify(walletService, Mockito.times(0)).moveMoney(anyString(), anyLong(), anyLong(), anyDouble());
     }
 
     @Test
@@ -80,7 +100,8 @@ public class WalletTransactionTest {
         PowerMockito.when(RedisDistributedLock.getSingletonInstance()).thenReturn(lock);
 
         assertThat(walletTransaction.execute(walletService)).isEqualTo(false);
-        assertThat(walletTransaction.status).isEqualTo(STATUS.EXPIRED);
+        assertThat(walletTransaction.getStatus()).isEqualTo(STATUS.EXPIRED);
+        Mockito.verify(walletService, Mockito.times(0)).moveMoney(anyString(), anyLong(), anyLong(), anyDouble());
     }
 
     @Test
@@ -98,7 +119,7 @@ public class WalletTransactionTest {
         PowerMockito.when(RedisDistributedLock.getSingletonInstance()).thenReturn(lock);
 
         assertThat(walletTransaction.execute(walletService)).isEqualTo(true);
-        assertThat(walletTransaction.status).isEqualTo(STATUS.EXECUTED);
+        assertThat(walletTransaction.getStatus()).isEqualTo(STATUS.EXECUTED);
     }
 
     @Test
@@ -116,6 +137,6 @@ public class WalletTransactionTest {
         PowerMockito.when(RedisDistributedLock.getSingletonInstance()).thenReturn(lock);
 
         assertThat(walletTransaction.execute(walletService)).isEqualTo(false);
-        assertThat(walletTransaction.status).isEqualTo(STATUS.FAILED);
+        assertThat(walletTransaction.getStatus()).isEqualTo(STATUS.FAILED);
     }
 }

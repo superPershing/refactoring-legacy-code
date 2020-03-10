@@ -8,7 +8,7 @@ import cn.xpbootcamp.legacy_code.utils.RedisDistributedLock;
 import javax.transaction.InvalidTransactionException;
 
 public class WalletTransaction {
-    protected STATUS status;
+    private STATUS status;
     private String id;
     private Long buyerId;
     private Long sellerId;
@@ -37,33 +37,33 @@ public class WalletTransaction {
     }
 
     public boolean execute(WalletService walletService) throws InvalidTransactionException {
-        if (buyerId == null || (sellerId == null || amount < 0.0)) {
+        if (buyerId == null || sellerId == null || amount < 0.0) {
             throw new InvalidTransactionException("This is an invalid transaction");
         }
-        if (status == STATUS.EXECUTED) return true;
+        if (checkIfExecuted()) {
+            return true;
+        }
         boolean isLocked = false;
         try {
             isLocked = RedisDistributedLock.getSingletonInstance().lock(id);
 
-            // 锁定未成功，返回false
             if (!isLocked) {
                 return false;
             }
-            if (status == STATUS.EXECUTED) return true; // double check
-            // 交易超过20天
+            if (checkIfExecuted()) {
+                return true; // double check
+            }
             if (checkIfExpired()) {
                 this.status = STATUS.EXPIRED;
                 return false;
             }
 
-            String walletTransactionId = walletService.moveMoney(id, buyerId, sellerId, amount);
-            if (walletTransactionId != null) {
+            if (walletService.moveMoney(id, buyerId, sellerId, amount) != null) {
                 this.status = STATUS.EXECUTED;
                 return true;
-            } else {
-                this.status = STATUS.FAILED;
-                return false;
             }
+            this.status = STATUS.FAILED;
+            return false;
         } finally {
             if (isLocked) {
                 RedisDistributedLock.getSingletonInstance().unlock(id);
@@ -71,8 +71,15 @@ public class WalletTransaction {
         }
     }
 
+    protected boolean checkIfExecuted() {
+        return status == STATUS.EXECUTED;
+    }
+
     protected boolean checkIfExpired() {
         return System.currentTimeMillis() - createdTimestamp > 1728000000;
     }
 
+    public STATUS getStatus() {
+        return status;
+    }
 }
