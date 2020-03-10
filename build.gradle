@@ -37,4 +37,5 @@ dependencies {
     testCompile group: 'org.powermock', name: 'powermock-core', version: '2.0.5'
     testCompile 'org.assertj:assertj-core:3.10.0'
     testCompile group: 'org.mockito', name: 'mockito-core', version: '3.2.4'
+    testCompile group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.5'
 }
