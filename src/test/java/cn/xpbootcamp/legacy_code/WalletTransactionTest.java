@@ -3,6 +3,7 @@ package cn.xpbootcamp.legacy_code;
 import cn.xpbootcamp.legacy_code.enums.STATUS;
 import cn.xpbootcamp.legacy_code.service.WalletService;
 import cn.xpbootcamp.legacy_code.service.WalletServiceImpl;
+import cn.xpbootcamp.legacy_code.utils.IdGenerator;
 import cn.xpbootcamp.legacy_code.utils.RedisDistributedLock;
 import org.junit.Before;
 import org.junit.Rule;
@@ -22,7 +23,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(RedisDistributedLock.class)
+@PrepareForTest({RedisDistributedLock.class, IdGenerator.class})
 public class WalletTransactionTest {
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
@@ -32,6 +33,30 @@ public class WalletTransactionTest {
     @Before
     public void setUp() {
         initMocks(this);
+    }
+
+    @Test
+    public void should_generate_id_with_preAssigned_id_when_given_valid_pre_assigned_id() {
+        walletTransaction = new WalletTransaction("t_id", null, null, 100L, "orderId", 1.0);
+        assertThat(walletTransaction.getId()).isEqualTo("t_id");
+    }
+
+    @Test
+    public void should_generate_id_with_IdGenerator_when_given_null_pre_assigned_id() {
+        mockStatic(IdGenerator.class);
+        PowerMockito.when(IdGenerator.generateTransactionId()).thenReturn("uuid");
+        walletTransaction = new WalletTransaction(null, null, null, 100L, "orderId", 1.0);
+
+        assertThat(walletTransaction.getId()).isEqualTo("t_null");
+    }
+
+    @Test
+    public void should_generate_id_with_IdGenerator_when_given_empty_pre_assigned_id() {
+        mockStatic(IdGenerator.class);
+        PowerMockito.when(IdGenerator.generateTransactionId()).thenReturn("uuid");
+        walletTransaction = new WalletTransaction("", null, null, 100L, "orderId", 1.0);
+
+        assertThat(walletTransaction.getId()).isEqualTo("t_");
     }
 
     @Test

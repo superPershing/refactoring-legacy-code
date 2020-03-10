@@ -20,6 +20,8 @@ public class WalletTransaction {
 
     public WalletTransaction(String preAssignedId, Long buyerId, Long sellerId, Long productId, String orderId, Double amount) {
         this.amount = amount;
+
+        // FIXME
         if (preAssignedId != null && !preAssignedId.isEmpty()) {
             this.id = preAssignedId;
         } else {
@@ -77,6 +79,10 @@ public class WalletTransaction {
 
     protected boolean checkIfExpired() {
         return System.currentTimeMillis() - createdTimestamp > 1728000000;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public STATUS getStatus() {
