@@ -2,7 +2,6 @@ package cn.xpbootcamp.legacy_code;
 
 import cn.xpbootcamp.legacy_code.enums.STATUS;
 import cn.xpbootcamp.legacy_code.service.WalletService;
-import cn.xpbootcamp.legacy_code.service.WalletServiceImpl;
 import cn.xpbootcamp.legacy_code.utils.IdGenerator;
 import cn.xpbootcamp.legacy_code.utils.RedisDistributedLock;
 
@@ -17,10 +16,10 @@ public class WalletTransaction {
     private Long createdTimestamp;
     private Double amount;
     private STATUS status;
-    private String walletTransactionId;
 
 
-    public WalletTransaction(String preAssignedId, Long buyerId, Long sellerId, Long productId, String orderId) {
+    public WalletTransaction(String preAssignedId, Long buyerId, Long sellerId, Long productId, String orderId, Double amount) {
+        this.amount = amount;
         if (preAssignedId != null && !preAssignedId.isEmpty()) {
             this.id = preAssignedId;
         } else {
@@ -37,7 +36,7 @@ public class WalletTransaction {
         this.createdTimestamp = System.currentTimeMillis();
     }
 
-    public boolean execute() throws InvalidTransactionException {
+    public boolean execute(WalletService walletService) throws InvalidTransactionException {
         if (buyerId == null || (sellerId == null || amount < 0.0)) {
             throw new InvalidTransactionException("This is an invalid transaction");
         }
@@ -57,10 +56,9 @@ public class WalletTransaction {
                 this.status = STATUS.EXPIRED;
                 return false;
             }
-            WalletService walletService = new WalletServiceImpl();
+
             String walletTransactionId = walletService.moveMoney(id, buyerId, sellerId, amount);
             if (walletTransactionId != null) {
-                this.walletTransactionId = walletTransactionId;
                 this.status = STATUS.EXECUTED;
                 return true;
             } else {
